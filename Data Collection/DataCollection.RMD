@@ -1,0 +1,114 @@
+---
+title: 'Machine Learning'
+date: "7/5/2022"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction: Please Read
+
+## Data Collection
+
+
+### Collection:
+
+Handwritten digits are from ten individuals. Each individual is to write each digit (0 - 9) five times (50 written digits). Digits should be written in Black ink (consider a sharpie, black marker, or a highly legible pen) upon white paper (such as computer paper). 
+
+The dataset have 50 copies of every digit (0 - 9), 500 total digits. Digitize each images with a clear camera, and save these into a .ZIP file. 
+
+### 1B) Image Processing
+
+Individual digits are 28x28 grayscale images with pixel values between 0 and 255. A processed MNIST digit is "flattened" into an array of length 784 (28x28). The collection of digits are stored in a Matrix, with each row representing the array of one image. 500 handwritten digits should be processed into one Matrix with dimensions 784x500.
+
+Labels are stored as an array of integers. 500 labels should be stored in one array, length 500.
+
+
+```{r Q1B}
+#Load the image into R
+library(imager)
+file= "C:/.../1.jpg"
+im = load.image(file)
+plot(im)
+
+
+#Convert to grayscale and transpose
+im_g = grayscale(im)
+plot(im_g)
+#Cut the full image into the grids containing individual images
+col1 = imsub(im_g,x %inr% c(40,85))
+plot(col1)
+col2 = imsub(im_g,x %inr% c(150,200))
+plot(col2)
+col3 = imsub(im_g,x %inr% c(265,310))
+plot(col3)
+col4 = imsub(im_g,x %inr% c(375,425))
+plot(col4)
+col5 = imsub(im_g,x %inr% c(490,540))
+plot(col5)
+
+
+#Convert the image into a negative (white space = Black, writing = White)
+cut.tuples = list(c(35,90),c(155,210),c(270,325),
+                  c(380,440),c(500,560), 
+                  c(610,670),c(710,780),c(830,900),
+                  c(960,1010),c(1055,1120))
+
+columns = list(col1,col2,col3,col4, col5)
+
+pics = list()
+
+for (i in 1:length(columns)){
+  column.vector = columns[[i]]
+  for (j in 1:10){
+    
+    picture = imsub(column.vector,y %inr% c(cut.tuples[[j]][1],cut.tuples[[j]][2]))
+    
+    pics = append(pics,list(picture))
+  }
+}
+
+for (i in 1:length(pics)){
+  plot(pics[[i]])
+}
+
+#Additional processing to make Negative and remove background
+pics.background.removed=list()
+for (i in 1:length(pics)){
+  picture = pics[[i]]<0.6
+  pics.background.removed=append(pics.background.removed,list(picture))
+}
+
+
+plot(pics.background.removed[[10]])
+#Shrink the image to 28*28
+pics.smaller=list()
+for (i in 1:length(pics.background.removed)){
+  pic.small = resize(pics.background.removed[[i]], size_x = 28, size_y = 28)
+  pics.smaller=append(pics.smaller,list(pic.small))
+}
+
+
+for (i in 1:length(pics.smaller)){
+  plot(pics.smaller[[i]])
+}
+
+#Flatten and load image (as matrices turned vectors), into a matrix with 28*28 columns and 24 rows
+flattened = matrix( ncol=28*28)
+
+for (i in 1:length(pics.smaller)){
+  flattened = rbind(flattened,c(as.matrix(pics.smaller[[i]])))
+}
+
+flattened<-flattened[2:51,]
+
+
+flattened1=flattened*255
+dim(flattened1)
+
+#combine with the data from other images
+m = rbind(flattened1, flattened2)
+
+
+```
