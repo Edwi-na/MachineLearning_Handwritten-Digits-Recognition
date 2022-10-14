@@ -131,7 +131,7 @@ Two elements demonstrating the result of my test:
 1. The Confusion Matrix of the predicted vs true labels
 2. The accuracy of predicting labels, as a percentage (e.g. 50%) 
 
-#### 1) K-Nearest-Neighbors
+#### Model 1) K-Nearest-Neighbors
 
 Implement a K-Nearest-Neighbors classifier.
 ```{r KNN}
@@ -181,7 +181,7 @@ data.frame(Tree = c('Test', 'Digits'),
 ) 
 ```
 
-### 2B) Decision Tree
+### Model 2) Decision Tree
 
 Implement a Decision Tree classifier.
 
@@ -228,7 +228,7 @@ data.frame(Tree = c('Test', 'Digits'),
 
 ```
               
-### 2C) Random Forest
+### Model 3) Random Forest
 
 Implement a Random Forest classifier according to the Q2 instructions above.
 
