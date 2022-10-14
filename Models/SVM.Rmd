@@ -1,0 +1,352 @@
+---
+title: "Machine Learning"
+author: " Concepts and Applications"
+date: '2022-08-04'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+I will implement Support Vector Machines and Multilayer Perceptrons (neural networks).
+
+The following models will be evaluated by two elements, confusion matrix and accuracy. 
+
+## Feature Engineering - dimension reduction, to the data.
+
+```{Feature Engineering}
+library(factoextra)
+library(FactoMineR)
+library(forecast)
+
+
+#prepare for the datatset
+# train = as.data.frame(mnist$train$images)
+# test = as.data.frame(mnist$test$images)
+# 
+# #determine number of components
+# pca.mnist = PCA(train, graph = F)
+# pca.mnist$eig  
+# pca = prcomp(train)
+# 
+# #apply component structure
+# train_components.mnist = data.frame(cbind(pca$x[,1:149], y=mnist$train$labels))
+# test_pca.mnist = predict(pca,newdata=test)
+# test_components.mnist = data.frame(cbind(test_pca.mnist[,1:236], y =mnist$test$labels))
+# 
+# combined_digits = read.csv('C:/Users/Qingyuan Sun/Desktop/EDWINA/HW3/combined_digits.csv')
+# colnames(combined_digits)[1:784] = paste("V", 1:ncol(combined_digits),sep="")
+# colnames(combined_digits)[785] = paste('y')
+# 
+# combined_digits_pca = predict(pca,newdata=combined_digits[,1:784])
+# combined_digits_components = data.frame(cbind(combined_digits_pca[,1:236], y =combined_digits$y))
+# 
+# #save to csv
+# write.csv(train_components.mnist,"C:/Users/Qingyuan Sun/Desktop/EDWINA/HW3/train_components.csv",row.names = FALSE)
+# write.csv(test_components.mnist,"C:/Users/Qingyuan Sun/Desktop/EDWINA/HW3/test_components.csv",row.names = FALSE)
+# write.csv(combined_digits_components,"C:/Users/Qingyuan Sun/Desktop/EDWINA/HW3/combined_digits_components.csv",row.names = FALSE)
+
+#read files and format
+train_components.mnist = read.csv("C:/Users/Qingyuan Sun/Desktop/EDWINA/HW3/train_components.csv")
+test_components.mnist = read.csv("C:/Users/Qingyuan Sun/Desktop/EDWINA/HW3/test_components.csv")
+combined_digits_components = read.csv("C:/Users/Qingyuan Sun/Desktop/EDWINA/HW3/combined_digits_components.csv")
+
+train_components.mnist$y = factor(train_components.mnist$y)
+test_components.mnist$y = factor(test_components.mnist$y)
+combined_digits_components$y = factor(combined_digits_components$y)
+
+```
+
+## Data Modeling
+### Model 4): Support Vector Machine 
+#### SVM with a Linear Kernel
+```{r}
+library(caret)
+#install.packages('e1071')
+library(e1071)
+
+set.seed(61710)
+split = sample(x=1:nrow(train_components.mnist),size=0.1*nrow(train_components.mnist))
+train_subset =train_components.mnist[split,]
+
+model.svm = svm(y~., data = train_subset, type = 'C-classification',
+                 kernel = 'linear',scale=F)
+pred.svm.linear = predict(model.svm, newdata = test_components.mnist)
+
+confusionMatrix(pred.svm.linear, factor(test_components.mnist$y))
+
+# Observations:
+# Overall accuracy of 91.18%
+
+```
+
+#### SVM with a Polynomial Kernel
+
+Through validation, optimize the 'degree' parameter. Also consider optimizing the 'gamma' and 'cost' parameters.
+
+```{r}
+tune_svmPoly = tune(method = svm,y~.,data = train_subset,kernel='polynomial',
+                    type='C-classification',
+                    ranges= list(degree=c(2,3), cost = c(0.01, 0.1, 1), gamma=c(0,1,10)))
+summary(tune_svmPoly)
+tune_svmPoly$best.model
+pred.svm.poly = predict(tune_svmPoly$best.model, newdata = test_components.mnist)
+confusionMatrix(pred.svm.poly, factor(test_components.mnist$y))
+
+# Observations:
+# Overall accuracy of 0.9315%
+
+```
+
+#### SVM with a Radial Kernel
+
+Through validation, optimize the 'gamma' and 'cost' parameters.
+
+```{r}
+tune_svmRadial = tune(method='svm',y~.,data=train_subset, kernel='radial', 
+                      type='C-classification', 
+                      ranges=list(cost=c(0.01,0.1,10,15), gamma=c(0, 0.001, 0.01, 0.1, 1,10)))
+summary(tune_svmRadial$best.model)
+pred.svm.radial = predict(tune_svmRadial$best.model, newdata = test_components.mnist)
+confusionMatrix(pred.svm.radial, factor(test_components.mnist$y))
+
+# Observations:
+# Overall accuracy of 92.69%
+
+```
+
+### Select the best model and perform your test
+
+Feature engineer Handwritten Digits such that it receives the same pre-modeling treatment that the MNIST data has.
+
+```{r}
+#Feature engineer did in part 1.1
+pred.cd = predict(tune_svmPoly$best.model, newdata = combined_digits_components)
+confusionMatrix(pred.cd, factor(combined_digits_components$y))
+
+# Observations:
+# Overall accuracy of 46.24%
+
+```
+
+
+### Model 4): Multilayer Perceptron
+#### Using the data engineered in last part
+
+```{r}
+#Convert data to h2o objects
+#install.packages('h2o')
+library(h2o)
+h2o.init()
+train_h2o = as.h2o(train_components.mnist)
+test_h2o = as.h2o(test_components.mnist)
+combined_digits_components_h2o = as.h2o(combined_digits_components)
+```
+
+
+#### Multi Layer Perceptron with one hidden layer
+
+Tuning the size of hidden layers and activation function.
+
+```{r}
+#try different size of hidden layers and activation function
+model1 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         hidden = c(5),
+                         seed=61710)
+pred1 = h2o.predict(model1,newdata = test_h2o)
+acc.model1 = mean(pred1[1]==test_h2o$y) # accuracy is 0.8704
+h2o.confusionMatrix(model1,test_h2o)
+
+model2 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         hidden = c(10),
+                         seed=61710)
+pred2 = h2o.predict(model2,newdata = test_h2o)
+acc.model2 = mean(pred2[1]==test_h2o$y) # accuracy is 0.9205
+h2o.confusionMatrix(model2,test_h2o)
+
+model3 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         hidden = c(20),
+                         seed=61710)
+pred3 = h2o.predict(model3,newdata = test_h2o)
+acc.model3 = mean(pred3[1]==test_h2o$y) # accuracy is 0.9418
+h2o.confusionMatrix(model3,test_h2o)
+
+model4 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         hidden = c(50),
+                         seed=61710)
+pred4 = h2o.predict(model4,newdata = test_h2o)
+acc.model4 = mean(pred4[1]==test_h2o$y) # accuracy is 0.9475
+h2o.confusionMatrix(model4,test_h2o)
+
+model5 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         activation = 'Tanh',
+                         hidden = c(50),
+                         seed=61710)
+pred5 = h2o.predict(model5,newdata = test_h2o)
+acc.model5 = mean(pred5[1]==test_h2o$y) # accuracy is 0.9388
+h2o.confusionMatrix(model5,test_h2o)
+
+model6 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         activation = 'Rectifier',
+                         hidden = c(50),
+                         seed=61710)
+pred6 = h2o.predict(model6,newdata = test_h2o)
+acc.model6 = mean(pred6[1]==test_h2o$y) # accuracy is 0.9489
+h2o.confusionMatrix(model6,test_h2o)
+
+model7 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         activation = 'Maxout',
+                         hidden = c(50),
+                         seed=61710)
+pred7 = h2o.predict(model7,newdata = test_h2o)
+acc.model7 = mean(pred7[1]==test_h2o$y) # accuracy is 0.9456
+h2o.confusionMatrix(model7,test_h2o)
+
+#accuracy of Digits dataset
+data.frame(Tree = c('acc.model1','acc.model2','acc.model3','acc.model4','acc.model5',
+                        'acc.model6','acc.model7'), 
+           Accuracy = c(acc.model1,acc.model2,acc.model3,acc.model4,acc.model5,
+                        acc.model6,acc.model7)
+           
+) 
+
+
+```
+
+
+#### Multi Layer Perceptron with multiple hiden layers
+
+Tune the size of layers and the number of layers to include, and activation function.
+
+```{r}
+model8 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         hidden = c(50,50,50),
+                         seed=61710)
+pred8 = h2o.predict(model8,newdata = test_h2o)
+acc.model8 = mean(pred8[1]==test_h2o$y) # accuracy is 0.955
+h2o.confusionMatrix(model8,test_h2o)
+
+
+model9 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         hidden = c(10,10,10,10,10,10),
+                         seed=61710)
+pred9 = h2o.predict(model9,newdata = test_h2o)
+acc.model9 = mean(pred9[1]==test_h2o$y) # accuracy is 0.9145
+h2o.confusionMatrix(model9,test_h2o)
+
+model10 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         hidden = c(50,50,50,50,50,50),
+                         seed=61710)
+pred10 = h2o.predict(model10,newdata = test_h2o)
+acc.model10 = mean(pred10[1]==test_h2o$y) # accuracy is 0.9555
+h2o.confusionMatrix(model10,test_h2o)
+
+model11 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         activation = 'Rectifier',
+                         hidden = c(50,50,50),
+                         seed=61710)
+pred11 = h2o.predict(model11,newdata = test_h2o)
+acc.model11 = mean(pred11[1]==test_h2o$y) # accuracy is 0.9519
+h2o.confusionMatrix(model11,test_h2o)
+
+
+model12 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         activation = 'Maxout',
+                         hidden = c(10,10,10,10,10,10),
+                         seed=61710)
+pred12 = h2o.predict(model12,newdata = test_h2o)
+acc.model12 = mean(pred12[1]==test_h2o$y) # accuracy is 0.9379
+h2o.confusionMatrix(model12,test_h2o)
+
+model13 = h2o.deeplearning(x=1:236,
+                         y = 237,
+                         training_frame = train_h2o,
+                         activation = 'Rectifier',
+                         hidden = c(50,50,50,50,50,50),
+                         seed=61710)
+pred13 = h2o.predict(model13,newdata = test_h2o)
+acc.model13 = mean(pred13[1]==test_h2o$y) # accuracy is 0.9544
+h2o.confusionMatrix(model13,test_h2o)
+
+
+
+#getting same accuracy on test sample no matter the number of the size of your layers and the number of layers, so using Random search to automatically tune Hyperparameters
+
+
+#Specify hyper-parameters to examine
+hyper_parameters = list(activation=c('Rectifier','Tanh','Maxout','RectifierWithDropout','TanhWithDropout','MaxoutWithDropout'),
+                        hidden=list(c(20,20),c(50,50),c(75,75),c(25,25,25),c(30,30,30),c(60,60,60),c(100,100,100),c(25,25,25,25), c(50,50,50,50)),
+                        l1=seq(0,1e-4,1e-6),
+                        l2=seq(0,1e-4,1e-6))
+#Specify search criteria
+search_criteria = list(strategy='RandomDiscrete',
+                       max_runtime_secs=800,
+                       max_models=100,
+                       seed=1031,
+                       stopping_rounds=5,
+                       stopping_tolerance=1e-2)
+#Tune
+grid = h2o.grid(algorithm='deeplearning',
+                grid_id='dl_grid_random',
+                training_frame = train_h2o,
+                validation_frame=test_h2o,
+                x=1:236,
+                y=237,
+                epochs=10,
+                stopping_metric='logloss', 
+                stopping_tolerance=1e-2,
+                stopping_rounds=2,
+                hyper_params = hyper_parameters,
+                search_criteria = search_criteria)
+
+grid = h2o.getGrid(grid_id = "dl_grid_random",sort_by="logloss",decreasing=FALSE)
+grid@summary_table[1,]
+
+best_model = h2o.getModel(grid@model_ids[[1]]) ## model with lowest logloss  (on validation, since it was available during training)
+h2o.confusionMatrix(best_model,valid=T)
+pred.best_model = h2o.predict(best_model,newdata = test_h2o)
+acc.best_model = mean(pred.best_model[,1]==test_h2o$y)
+
+
+data.frame(Tree = c('acc.model8','acc.model9','acc.model10','acc.model11','acc.model12','acc.model13', 'acc.best_model'), 
+           Accuracy = c(acc.model8,acc.model9,acc.model10,acc.model11,acc.model12,acc.model13,
+                        acc.best_model)
+           
+) 
+
+```
+
+#### Select the best model and perform test
+
+```{r}
+#h2o.confusionMatrix(best_model,newdata=test_h2o)
+pred.best_model.cd = h2o.predict(best_model,newdata = combined_digits_components_h2o)
+mean(pred.best_model.cd[,1]==combined_digits_components_h2o$y)
+h2o.confusionMatrix(best_model,combined_digits_components_h2o)
+
+```
+
