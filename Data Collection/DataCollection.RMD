@@ -120,5 +120,11 @@ colnames(m10)[785] = "y"
 library(MASS)
 write.matrix(m10,'C:/.../imageMatrix.txt',sep = "\t")
 
+#Reading the data and check the label
+#x <- as.data.frame(digits) 
+#i <- 5
+#image(1:28, 1:28, matrix(x[i,], nrow=28)[ , 28:1], 
+      col = gray(seq(0, 1, 0.05)), xlab = "", ylab="")
+#x$Label[5]
 
 ```
