@@ -106,8 +106,19 @@ flattened<-flattened[2:51,]
 flattened1=flattened*255
 dim(flattened1)
 
-#combine with the data from other images
-m = rbind(flattened1, flattened2)
+#combine with the data from other images and 
+m1 = rbind(flattened1, flattened2)
+
+# Create array
+y = rep(c(0L,1L,2L,3L,4L,5L,6L,7L,8L,9L), times= 50)
+m10=cbind(m1, y)
+
+colnames(m10) = paste("X", 1:ncol(m10),sep="")
+colnames(m10)[785] = "y"
+
+#save as imageMatrix.txt
+library(MASS)
+write.matrix(m10,'C:/.../imageMatrix.txt',sep = "\t")
 
 
 ```
