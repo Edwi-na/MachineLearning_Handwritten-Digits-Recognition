@@ -9,5 +9,5 @@ Metric:
 Two elements demonstrating the result of my test: the Confusion Matrix of the predicted vs true labels and the accuracy of predicting labels, as a percentage. Higher the accuracy, better the model.
 
 Methods:
-I have implemented 5 models, including KNN, Decision Tree, Random Forest, Support Vector Machines, and Convolutional Neural Network. 
+I have implemented 5 models, including KNN (R), Decision Tree (R), Random Forest (R), Support Vector Machines (R), and Convolutional Neural Network (Python). 
 
