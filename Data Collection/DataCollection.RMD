@@ -7,7 +7,6 @@ date: "7/5/2022"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction: Please Read
 
 ## Data Collection
 
@@ -29,7 +28,7 @@ Labels are stored as an array of integers. 500 labels should be stored in one ar
 #Load the image into R
 library(imager)
 file= "C:/.../1.jpg"
-im = load.image(file)
+im = load.image(file) #please see the sample image
 plot(im)
 
 
